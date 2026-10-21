@@ -389,5 +389,34 @@ export function exportSave(): string {
   return JSON.stringify(serialize(store.get()), null, 2);
 }
 
+/**
+ * 导入存档（把「导出存档」的 JSON 粘进来）。
+ *
+ * 换域名/换部署地址时 localStorage 是按 origin 隔离的，老存档不会自动跟过来，
+ * 这时可以用这个功能把进度搬过来。
+ *
+ * 注意：导入的存档必须盖上**当前 epoch** —— 否则 load() 的 epoch 校验会把它
+ * 当成「重置前的旧世代」直接丢掉。
+ */
+export function importSave(raw: string): boolean {
+  try {
+    const parsed = JSON.parse(raw) as SerializedGameState;
+    if (typeof parsed.version !== 'number') {
+      console.warn('[import] invalid save: missing version');
+      return false;
+    }
+    const migrated = migrate(parsed);
+    migrated.epoch = myEpoch;
+    migrated.savedAt = Date.now();
+    localStorage.setItem(SAVE_KEY, JSON.stringify(migrated));
+    // 立刻生效
+    load();
+    return true;
+  } catch (e) {
+    console.error('[import] failed', e);
+    return false;
+  }
+}
+
 /** 当前槽位 id（给 UI 显示用） */
 export { SLOT_ID };
