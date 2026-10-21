@@ -30,7 +30,7 @@ import {
   rebirthMinPeak,
   rebirthMinOrdinal,
 } from '../game/actions';
-import { save, exportSave, resetSave } from '../game/save';
+import { save, exportSave, importSave, resetSave } from '../game/save';
 import { SLOT_LABEL } from '../game/slots';
 import Decimal from 'break_eternity.js';
 import { getTodayChallenge } from '../game/daily-challenge';
@@ -141,8 +141,15 @@ export function mount(root: HTMLElement): void {
         <div class="footer-actions">
           <button class="btn-secondary" id="btn-save">立即存盘</button>
           <button class="btn-secondary" id="btn-export">导出存档</button>
+          <button class="btn-secondary" id="btn-import">导入存档</button>
           <button class="btn-secondary" id="btn-reset">重置游戏</button>
           <span class="hint">每 30 秒自动存盘</span>
+        </div>
+        <div class="import-panel hidden" id="import-panel">
+          <textarea id="import-text" spellcheck="false"
+            placeholder="把「导出存档」复制出来的 JSON 粘贴到这里，然后点「确认导入」"></textarea>
+          <button class="btn-secondary" id="btn-import-confirm">确认导入</button>
+          <button class="btn-secondary" id="btn-import-cancel">取消</button>
         </div>
       </footer>
 
@@ -170,6 +177,32 @@ function bindEvents(root: HTMLElement): void {
       () => toast('已复制到剪贴板'),
       () => toast('导出失败'),
     );
+  });
+
+  // 导入存档：换域名时把老存档搬过来
+  const importPanel = root.querySelector<HTMLElement>('#import-panel')!;
+  const importText = root.querySelector<HTMLTextAreaElement>('#import-text')!;
+  root.querySelector('#btn-import')!.addEventListener('click', () => {
+    importPanel.classList.toggle('hidden');
+    if (!importPanel.classList.contains('hidden')) importText.focus();
+  });
+  root.querySelector('#btn-import-cancel')!.addEventListener('click', () => {
+    importPanel.classList.add('hidden');
+    importText.value = '';
+  });
+  root.querySelector('#btn-import-confirm')!.addEventListener('click', () => {
+    const raw = importText.value.trim();
+    if (!raw) {
+      toast('请先粘贴存档内容');
+      return;
+    }
+    if (importSave(raw)) {
+      importPanel.classList.add('hidden');
+      importText.value = '';
+      toast('导入成功');
+    } else {
+      toast('导入失败：不是有效的存档');
+    }
   });
 
   root.querySelector('#btn-reset')!.addEventListener('click', () => {
